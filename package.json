@@ -1,0 +1,27 @@
+{
+  "name": "langgraph_ts_parallel_search",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "ts-node ./src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.10.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@langchain/anthropic": "^0.3.11",
+    "@langchain/community": "^0.3.21",
+    "@langchain/core": "^0.3.27",
+    "@langchain/langgraph": "^0.2.38",
+    "@langchain/openai": "^0.3.16",
+    "@tavily/core": "^0.0.2",
+    "dotenv": "^16.4.7"
+  }
+}
