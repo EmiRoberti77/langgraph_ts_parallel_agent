@@ -7,12 +7,11 @@ import {
   StateGraph,
   START,
   END,
-  messagesStateReducer,
   MessagesAnnotation,
   Annotation,
 } from "@langchain/langgraph";
-import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+import { Flight, Hotel } from "./types";
 
 dotenv.config();
 
@@ -23,35 +22,40 @@ export const StateAnnotations = Annotation.Root({
   answer: Annotation<AIMessage>(),
 });
 
-// Node for web search
-async function webSearch_1(_state: typeof StateAnnotations.State) {
-  const tvly = tavily({
-    apiKey: process.env.TAVILY_API_KEY!,
+async function flight_search(_state: typeof StateAnnotations.State) {
+  const flights = process.env.FLIGHT_API_MOCK!;
+  const data = await fetch(flights, {
+    method: "GET",
+    headers: {
+      "content-type": "application/json",
+    },
   });
-
-  const questionContent = _state.question?.content;
-  if (!questionContent) {
-    throw new Error("No question provided in the state.");
-  }
-
-  const results = await tvly.search(questionContent as string, {
-    maxResults: 3,
-  });
-
-  const responses = results.results.map(
-    (result) =>
-      new AIMessage({
-        content: result.content,
-      })
-  );
-
+  const allFlights: Flight[] = (await data.json()).flights as Flight[];
   return {
-    messages: responses,
+    messages: new AIMessage({
+      content: JSON.stringify(allFlights),
+    }),
+  };
+}
+
+async function hotel_search(_state: typeof StateAnnotations.State) {
+  const hotels = process.env.HOTELS_API_MOCK!;
+  const data = await fetch(hotels, {
+    method: "GET",
+    headers: {
+      "content-type": "application/json",
+    },
+  });
+  const allHotels: Hotel[] = (await data.json()).hotels as Hotel[];
+  return {
+    messages: new AIMessage({
+      content: JSON.stringify(allHotels),
+    }),
   };
 }
 
 // Node for refining response
-async function refineResponse(_state: typeof StateAnnotations.State) {
+async function booking(_state: typeof StateAnnotations.State) {
   const llm = new ChatAnthropic({
     apiKey: process.env.ANTHROPIC_API_KEY!,
     model: "claude-2.1",
@@ -66,8 +70,11 @@ async function refineResponse(_state: typeof StateAnnotations.State) {
   if (!questionContent) {
     throw new Error("No question provided in the state.");
   }
+  const instructions = `you are a travel agent and need to associate and book the best options 
+                        for a passenger based on their flight, where they are landing 
+                        and the closest hotel with the best star rating`;
 
-  const refinedPrompt = `Question: ${questionContent}\nContext:\n${contextString}\nAnswer the question based on the above context.`;
+  const refinedPrompt = `instructions:${instructions} Question: ${questionContent}\nContext:\n${contextString}\nAnswer the question based on the above context.`;
 
   const response = await llm.invoke([
     new HumanMessage({ content: refinedPrompt }),
@@ -81,11 +88,14 @@ async function refineResponse(_state: typeof StateAnnotations.State) {
 
 // Build the state graph
 const builder = new StateGraph(StateAnnotations)
-  .addNode("webSearch", webSearch_1)
-  .addNode("refine", refineResponse)
-  .addEdge(START, "webSearch")
-  .addEdge("webSearch", "refine")
-  .addEdge("refine", END);
+  .addNode("fligh_search", flight_search)
+  .addNode("hotel_search", hotel_search)
+  .addNode("booking", booking)
+  .addEdge(START, "fligh_search")
+  .addEdge(START, "hotel_search")
+  .addEdge("fligh_search", "booking")
+  .addEdge("hotel_search", "booking")
+  .addEdge("booking", END);
 
 const checkpointer = new MemorySaver();
 export const graph = builder.compile({ checkpointer });

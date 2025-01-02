@@ -5,7 +5,8 @@ import { graph } from "./agent";
 async function startGraph() {
   const state = {
     question: new HumanMessage({
-      content: "Tell me about Donald Trump's life.",
+      content:
+        "flight delayed coming from 'CDG' i need to land into London, get me best flight and hotel",
     }),
     answer: new AIMessage({
       content: "",
