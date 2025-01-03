@@ -1,19 +1,14 @@
 import { AIMessage } from "@langchain/core/messages";
 import { StateAnnotations } from "../agent";
-import { Flight } from "../types";
+import { Flights } from "../types";
+import { get } from "./fetch_data";
 
 export async function flight_search(_state: typeof StateAnnotations.State) {
-  const flights = process.env.FLIGHT_API_MOCK!;
-  const data = await fetch(flights, {
-    method: "GET",
-    headers: {
-      "content-type": "application/json",
-    },
-  });
-  const allFlights: Flight[] = (await data.json()).flights as Flight[];
+  const endpoint = process.env.FLIGHT_API_MOCK!;
+  const flights: Flights = await get<Flights>(endpoint);
   return {
     messages: new AIMessage({
-      content: JSON.stringify(allFlights),
+      content: JSON.stringify(flights.flights),
     }),
   };
 }
