@@ -1,3 +1,12 @@
+export interface Clients {
+  clients: Customer[];
+}
+export interface Flights {
+  flights: Flight[];
+}
+export interface Hotels {
+  hotels: Hotel[];
+}
 export interface Flight {
   flight_number: string;
   origin: string;
@@ -6,7 +15,6 @@ export interface Flight {
   arrival_time: string;
   duration: string;
 }
-
 export interface Hotel {
   name: string;
   city: string;
@@ -14,4 +22,22 @@ export interface Hotel {
   description: string;
   price_per_night: number;
   room_type: string;
+}
+export interface Customer {
+  client_id: string;
+  name: string;
+  email: string;
+  mobile: string;
+  holiday_history: HolidayHistory[];
+  last_holiday_date: string;
+  average_yearly_spend: number;
+}
+
+export interface HolidayHistory {
+  holiday_id: string;
+  destination: string;
+  start_date: string;
+  end_date: string;
+  price: number;
+  travelers: number;
 }
