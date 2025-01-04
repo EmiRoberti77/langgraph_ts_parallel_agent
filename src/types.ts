@@ -41,3 +41,10 @@ export interface HolidayHistory {
   price: number;
   travelers: number;
 }
+
+export interface BookingEmail {
+  to: string[];
+  from: string;
+  subject: string;
+  body: string;
+}
