@@ -12,7 +12,7 @@ export async function travel_agent(_state: typeof StateAnnotations.State) {
   const contextString = _state.messages
     .map((msg: AIMessage) => msg.content)
     .join("\n");
-  const questionContent = _state.question?.content;
+  const questionContent = _state.instructions?.content;
 
   if (!questionContent) {
     throw new Error("No question provided in the state.");

@@ -7,6 +7,10 @@ export interface Flights {
 export interface Hotels {
   hotels: Hotel[];
 }
+
+export interface PNRAssociation {
+  pnr_associations: PNR[];
+}
 export interface Flight {
   flight_number: string;
   origin: string;
@@ -47,4 +51,10 @@ export interface BookingEmail {
   from: string;
   subject: string;
   body: string;
+}
+
+export interface PNR {
+  name: string;
+  pnr: string;
+  client_id: string;
 }
