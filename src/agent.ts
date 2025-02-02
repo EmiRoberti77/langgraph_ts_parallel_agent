@@ -1,91 +1,53 @@
 import dotenv from "dotenv";
-import { ChatOpenAI } from "@langchain/openai";
-import { ChatAnthropic } from "@langchain/anthropic";
-import { tavily } from "@tavily/core";
 import {
   MemorySaver,
   StateGraph,
   START,
   END,
-  messagesStateReducer,
   MessagesAnnotation,
   Annotation,
 } from "@langchain/langgraph";
-import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
-import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+import { flight_search } from "./tools/flight_search_tool";
+import { hotel_search } from "./tools/hotel_search_tool";
+import { travel_agent } from "./tools/travel_agent_tool";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
+import { customer_search } from "./tools/client_search_tool";
+import { booking_confirmed_tool } from "./tools/booking_confirmed_tool";
+import { extract_passenger_pnr } from "./tools/extract_client_from_pnr_tool";
 
 dotenv.config();
 
 // Create state annotations
 export const StateAnnotations = Annotation.Root({
   ...MessagesAnnotation.spec,
-  question: Annotation<HumanMessage>(),
+  pnr: Annotation<HumanMessage>(),
+  passenger: Annotation<AIMessage>(),
+  instructions: Annotation<HumanMessage>(),
   answer: Annotation<AIMessage>(),
+  confirmBooking: Annotation<boolean | undefined>,
+  bookingCompleted: Annotation<AIMessage>(),
 });
-
-// Node for web search
-async function webSearch_1(_state: typeof StateAnnotations.State) {
-  const tvly = tavily({
-    apiKey: process.env.TAVILY_API_KEY!,
-  });
-
-  const questionContent = _state.question?.content;
-  if (!questionContent) {
-    throw new Error("No question provided in the state.");
-  }
-
-  const results = await tvly.search(questionContent as string, {
-    maxResults: 3,
-  });
-
-  const responses = results.results.map(
-    (result) =>
-      new AIMessage({
-        content: result.content,
-      })
-  );
-
-  return {
-    messages: responses,
-  };
-}
-
-// Node for refining response
-async function refineResponse(_state: typeof StateAnnotations.State) {
-  const llm = new ChatAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-    model: "claude-2.1",
-    temperature: 0.4,
-  });
-
-  const contextString = _state.messages
-    .map((msg: AIMessage) => msg.content)
-    .join("\n");
-  const questionContent = _state.question?.content;
-
-  if (!questionContent) {
-    throw new Error("No question provided in the state.");
-  }
-
-  const refinedPrompt = `Question: ${questionContent}\nContext:\n${contextString}\nAnswer the question based on the above context.`;
-
-  const response = await llm.invoke([
-    new HumanMessage({ content: refinedPrompt }),
-  ]);
-
-  return {
-    message: response,
-    answer: response.content,
-  };
-}
 
 // Build the state graph
 const builder = new StateGraph(StateAnnotations)
-  .addNode("webSearch", webSearch_1)
-  .addNode("refine", refineResponse)
-  .addEdge(START, "webSearch")
-  .addEdge("webSearch", "refine")
-  .addEdge("refine", END);
+  .addNode("extract_passnger_pnr", extract_passenger_pnr)
+  .addNode("flight_search", flight_search)
+  .addNode("hotel_search", hotel_search)
+  .addNode("travel_agent", travel_agent)
+  .addNode("customer_search", customer_search)
+  .addNode("confirm_booking", booking_confirmed_tool)
+  .addEdge(START, "extract_passnger_pnr")
+  .addEdge("extract_passnger_pnr", "flight_search")
+  .addEdge("extract_passnger_pnr", "hotel_search")
+  .addEdge("extract_passnger_pnr", "customer_search")
+  .addEdge("flight_search", "travel_agent")
+  .addEdge("hotel_search", "travel_agent")
+  .addEdge("customer_search", "travel_agent")
+  .addEdge("travel_agent", "confirm_booking")
+  .addEdge("confirm_booking", END);
 
 const checkpointer = new MemorySaver();
-export const graph = builder.compile({ checkpointer });
+export const graph = builder.compile({
+  checkpointer,
+  //interruptBefore: ["confirm_booking"],
+});
